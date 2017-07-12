@@ -1,20 +1,22 @@
+#read file stock which contains on-hand stock of items of a retail store
 read.csv(file.choose(), header=T)->stock
-read.csv(file.choose(), header=T)->pos
-read.csv(file.choose(), header=T)->itemmaster
 View(stock)
-View(pos)
+
+#read file pos which contains category and subcategory to which each item belongs
+read.csv(file.choose(), header=T)->itemmaster
 View(itemmaster)
 
-#to merge the tables
+#read file pos which contains transactional data(sale of items) of the store
+read.csv(file.choose(), header=T)->pos
+View(pos)
+
+#to merge the tables pos and itemmaster so that categorical analysis can be performed on transactional data
 merge(pos,itemmaster,by.x= "itemcode",by.y="UID", all = T)->inter
 View(inter)
-str(inter)
-dim(inter)
 
+#remove null values
 inter_clean<-na.omit(inter)
 View(inter_clean)
-str(inter_clean)
-dim(inter_clean)
 
 merge(stock,inter,by= "itemcode", all = T)->db
 View(db)
@@ -28,20 +30,27 @@ colnames(stockdb)[colnames(stockdb)=="Group.1"]<-"Category"
 colnames(stockdb)[colnames(stockdb)=="x"]<-"Stock"
 stockdb$sale<-aggregate(db1$qty, by=list(db1$Category),sum, na.rm=TRUE)
 
-#to calculate Sales
+#to calculate category wise Sales
 aggregate(db1$sale_price, by=list(db1$Category),sum, na.rm=TRUE)->Result
 View(Result)
 colnames(Result)[colnames(Result)=="Group.1"]<-"Category"
 colnames(Result)[colnames(Result)=="x"]<-"Sales"
 
-#to calculate Margin
+#to calculate category wise Margin
 db1$CashMargin <- db1$Margin*db1$SellPrice*db1$qty
 aggregate(db1$CashMargin, by=list(db1$Category),sum, na.rm=TRUE)->Mar
 View(Mar)
 Result$Margin=round(Mar$x/Result$Sales,digits = 2)
 
-#to calculate Penetration
+#to calculate category wise Penetration of items
 aggregate(db1$transaction_nbr, by=list(db1$Category),function(x) length(unique(x)))->Count
 View(Count)
 Result$Penetration=round(Count$x/sum(Count$x),digits = 2)
 sum(Result$Penetration)
+
+#to calculate category wise share of business
+aggregate(db1$qty, by=list(db1$Category),sum,na.rm=TRUE)->Qty
+View(Qty)
+Result$SOB=round(Qty$x/sum(db1$qty,na.rm=TRUE),digits=2)
+
+sum(Result$SOB)
