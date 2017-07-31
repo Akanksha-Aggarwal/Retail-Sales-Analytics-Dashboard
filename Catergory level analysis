@@ -54,3 +54,99 @@ View(Qty)
 Result$SOB=round(Qty$x/sum(db1$qty,na.rm=TRUE),digits=2)
 
 sum(Result$SOB)
+
+
+#to calculate Days on Hand
+Temp<-aggregate(db1$CashMargin, by=list(db1$Category), sum)
+View(Temp)
+Temp$Sale <- Result$Sales
+Temp$COGS<-Temp$Sale-Temp$x
+Temp1<-aggregate(db1$Store_OnHand, by=list(db1$Category), sum)
+View(Temp1)
+Temp$CI<-Temp1$x
+Temp$Qty<-Qty$x
+Temp$DOH <- round(((Temp$CI + Temp$Qty/2)/Temp$COGS)*17,digits=2)
+Result$DOH=Temp$DOH
+
+
+#to calculate Turns
+Result$Turns = round(365/Result$DOH,digits = 2)
+View(Result)
+
+
+#to plot category wise sales and margin graph
+
+barplot(Result$Sales, names.arg=Result$Category,axisnames = TRUE,axis.lty = 3.5, horiz=FALSE, las=1, cex.names=0.5,col="blue",border=NA)
+par(new=TRUE)
+plot(Result$Margin,type="n",col="white",xaxt="n",yaxt="n",xlab="",ylab="")
+mtext("Sales",side=2,line=3)
+lines(Result$Category,Result$Margin,col="green",lwd=2)
+axis(4)
+mtext("Margin",side=4,line=3)
+
+#to plot category wise penetration,SOB and Turns
+
+barplot(Result$Penetration, names.arg=Result$Category,axisnames = TRUE,axis.lty = 3.5, horiz=FALSE, las=1, cex.names=0.5,col="blue")
+par(new=TRUE)
+plot(Result$Turns,type="n",col="white",xaxt="n",yaxt="n",xlab="",ylab="")
+mtext("Penetration",side=2,line=3)
+lines(Result$Category,Result$Turns,col="green",lwd=2)
+axis(4)
+mtext("Turns",side=4,line=2)
+par(new=TRUE)
+plot(Result$SOB,type="n",col="white",xaxt="n",yaxt="n",xlab="",ylab="")
+mtext("SOB",side=2,line=4)
+lines(Result$Category,Result$SOB,col="red",lwd=2)
+
+
+#to perform ABC analysis
+View(Mar)
+Mar$per_mar<-Mar$x/sum(Mar$x)
+sum(Mar$per_mar)
+Mar <- Mar[order(-Mar$per_mar) , ]
+View(Mar)
+Mar <- within(Mar, cum_sum <- cumsum(Mar$per_mar))
+Mar$ABC <- ifelse(Mar$cum_sum > 0.90, "C",ifelse(Mar$cum_sum < 0.70, "A", "B"))
+Mar$qty=Qty$x/sum(Qty$x)
+sum(Mar$qty)
+Mar <- within(Mar, cum_qty <- cumsum(Mar$qty))
+plot(Mar$cum_qty,Mar$cum_sum,type="l",xlab="Cumulative Quantity",ylab="Cumulative Margin",bg="red",col="blue")
+
+par(bg = "antiquewhite1")
+segments(0, 0.7, x1 = 0.2, y1 =0.7,col = "black", lty = 2)
+segments(0.2, 0, x1 = 0.2, y1 =0.7,col = "black", lty = 2)
+segments(0, 0.9, x1 = 0.7, y1 =0.9,col = "red", lty = 2)
+segments(0.7, 0, x1 = 0.7, y1 =0.9,col = "red", lty = 2)
+
+#to create a separate table for ABC analysis
+ABC<-data.frame(Mar$Group.1)
+colnames(ABC)[colnames(ABC)=="Mar.Group.1"]<-"Category"
+ABC$Class<-Mar$ABC
+View(ABC)
+
+#sub category analysis
+aggregate(db1$qty,by=list(db1$Category,db1$Subcategory),sum)->subcat
+sb <- subcat[which(subcat$Group.1=="Drinks Juices"),]
+colnames(sb)[colnames(sb)=="Group.1"]<-"Category"
+colnames(sb)[colnames(sb)=="Group.2"]<-"Sub-Category"
+colnames(sb)[colnames(sb)=="x"]<-"Sold Qty"
+#sb1 <- subcat[which(subcat$Group.1=="Biscuits"),]
+
+sb1 <- subcat[which(subcat$Group.1=="Savories"),]
+colnames(sb1)[colnames(sb1)=="Group.1"]<-"Category"
+colnames(sb1)[colnames(sb1)=="Group.2"]<-"Sub-Category"
+colnames(sb1)[colnames(sb1)=="x"]<-"Sold Qty"
+
+sb2 <- subcat[which(subcat$Group.1=="Confectionery"),]
+colnames(sb2)[colnames(sb2)=="Group.1"]<-"Category"
+colnames(sb2)[colnames(sb2)=="Group.2"]<-"Sub-Category"
+colnames(sb2)[colnames(sb2)=="x"]<-"Sold Qty"
+View(sb)
+View(sb1)
+View(sb2)
+write.csv(sb1,file=file.choose())
+read.csv(file.choose(),header = T)
+
+#to save the output in csv file
+write.csv(Result,file=file.choose())
+read.csv(file.choose(),header = T)
